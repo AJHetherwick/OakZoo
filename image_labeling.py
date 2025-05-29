@@ -4,7 +4,9 @@ Output is a csv file with file path, file name, label, and label ID
 """
 
 import pandas as pd
-from PIL import Image
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import os
 
 
 def main() -> None:
@@ -16,14 +18,38 @@ def main() -> None:
 
 def label_images(folder_path: str) -> None:
 
-    label_df_path = "C:\Users\accrintern\Documents\GitHub\OakZoo\Oakland_Zoo_UW_Labels.csv"
+    label_df_path = "C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv"
     label_df = pd.read_csv(label_df_path)
+    labeled_paths = label_df['File Path']
+
+    current_folder = os.path.normpath(folder_path)
+    overlap_list = []
+
+    for image_path in labeled_paths:
+        
+        image_folder = os.path.dirname(image_path)
+        image_folder = os.path.normpath(image_folder)
+
+        if image_folder == current_folder:
+            overlap_list.append(image_path)
     
-    for image in folder_path:
+    remaining_images = []
 
-        Image.open(image).convert("RGB")
+    for image in os.listdir(folder_path):
 
-        label = input('Enter the label for this photo')
+        full_path = folder_path + '/' + image
+        
+        if full_path not in overlap_list:
+            remaining_images.append(full_path)
+
+    for full_path in remaining_images:
+
+        # Optional: Skip non-image files
+        if not full_path.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+
+        img = mpimg.imread(full_path)
+
         label_label_id_dict = {
             'Acorn Woodpecker': 0,
             'American Coot': 1,
@@ -90,12 +116,39 @@ def label_images(folder_path: str) -> None:
             'Woodrat': 62
         }
 
-        label_id = input('Type the integer label ID for the species in the photo')
-        label = next((k for k, v in label_label_id_dict.items() if v == label_id), None)
+        plt.imshow(img)
+        plt.axis("off")
+        plt.title(full_path)
+        plt.show(block=False)
 
-        new_row = {folder_path + image, label, label_id}
+        label_id = input('Type the integer label ID for the species in the photo. \n' \
+                         'If you would like to quit with option to save enter \'break\': ').strip()
 
-        label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
+        if label_id != 'break':
+
+            while not label_id.isdigit():
+                label_id = input('Please enter a number 0-62 for label ID: ')
+
+            reverse_label_dict = {v: k for k, v in label_label_id_dict.items()}
+            label = reverse_label_dict.get(int(label_id))
+
+            new_row = {"File Path": full_path, "Label": label, "Label ID": label_id}
+            label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
+
+            print(label, label_id)
+
+            plt.close()
+        
+        else:
+            break
+
+    save_selection = input('Would you like to save changes to the Oak Zoo Label DF? (Enter yes or no): ').lower()
+
+    while save_selection not in ['yes', 'no']:
+        save_selection = input('Would you like to save changes to the Oak Zoo Label DF? (Enter yes or no): ').lower()
+    
+    if save_selection == 'yes':
+        label_df.to_csv("C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv", index=False)
 
 
-
+main()
