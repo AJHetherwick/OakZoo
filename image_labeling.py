@@ -11,7 +11,7 @@ import os
 
 def main() -> None:
 
-    folder_path = "Z:/Conservation/UWIN/trail cam photos/Study photos/2025/January/Chabot Golf Hole 9"
+    folder_path = "Z:/Conservation/UWIN/trail cam photos/Study photos/2025/January/Creek"
     
     label_images(folder_path)
 
@@ -20,7 +20,7 @@ def label_images(folder_path: str) -> None:
 
     label_df_path = "C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv"
     label_df = pd.read_csv(label_df_path)
-    labeled_paths = label_df['File Path']
+    labeled_paths = label_df['File_Path']
 
     current_folder = os.path.normpath(folder_path)
     overlap_list = []
@@ -42,15 +42,7 @@ def label_images(folder_path: str) -> None:
         if full_path not in overlap_list:
             remaining_images.append(full_path)
 
-    for full_path in remaining_images:
-
-        # Optional: Skip non-image files
-        if not full_path.lower().endswith((".jpg", ".jpeg", ".png")):
-            continue
-
-        img = mpimg.imread(full_path)
-
-        label_label_id_dict = {
+    label_label_id_dict = {
             'Acorn Woodpecker': 0,
             'American Coot': 1,
             'American Robin': 2,
@@ -71,75 +63,72 @@ def label_images(folder_path: str) -> None:
             'Canada Goose': 17,
             'Chirping Sparrow': 18,
             'Common Goldeneye': 19,
-            'Deer Mouse': 20,
-            'Domestic Cat': 21,
-            'Domestic Dog': 22,
-            'Domestic Horse': 23,
-            'Empty': 24,
-            'European Starling': 25,
-            'Fish': 26,
-            'Fox (cannot ID)': 27,
-            'Fox Squirrel': 28,
-            'Gray Fox': 29,
-            'Great Blue Heron': 30,
-            'Great Egret': 31,
-            'Hawk (cannot ID)': 32,
-            'Human': 33,
-            'Hummingbird': 34,
-            'Insect (cannot ID)': 35,
-            'Lizard (cannot ID)': 36,
-            'Mallard': 37,
-            'Mourning Dove': 38,
-            'North American River Otter': 39,
-            'Owl': 40,
-            'Quail': 41,
-            'Rabbit (cannot ID)': 42,
-            'Racoon': 43,
-            'Ring-Necked Duck': 44,
-            'small Mammal (cannot ID)': 45,
-            'Snowy Egret': 46,
-            'Spotted Towhee': 47,
-            'Steller\'s Jay': 48,
-            'Striped Skunk': 49,
-            'Swallow (cannot ID)': 50,
-            'Tamaulipas Crow': 51,
-            'Turkey Vulture': 52,
-            'Unknown': 53,
-            'Vehicle': 54,
-            'Virginia Opossum': 55,
-            'WATER': 56,
-            'Western Gray Squirrel': 57,
-            'White Crowned Sparrow': 58,
-            'Wild Pig': 59,
-            'Wild Turkey': 60,
-            'Willet': 61,
-            'Woodrat': 62
+            'Coyote': 20,
+            'Deer Mouse': 21,
+            'Domestic Cat': 22,
+            'Domestic Dog': 23,
+            'Domestic Goat': 24,
+            'Domestic Horse': 25,
+            'Empty': 26,
+            'European Starling': 27,
+            'Fish': 28,
+            'Fox (cannot ID)': 29,
+            'Fox Squirrel': 30,
+            'Gray Fox': 31,
+            'Great Blue Heron': 32,
+            'Great Egret': 33,
+            'Hawk (cannot ID)': 34,
+            'Human': 35,
+            'Hummingbird': 36,
+            'Insect (cannot ID)': 37,
+            'Lizard (cannot ID)': 38,
+            'Mallard': 39,
+            'Mourning Dove': 40,
+            'North American River Otter': 41,
+            'Owl': 42,
+            'Quail': 43,
+            'Rabbit (cannot ID)': 44,
+            'Raccoon': 45,
+            'Ring-Necked Duck': 46,
+            'small Mammal (cannot ID)': 47,
+            'Snowy Egret': 48,
+            'Spotted Towhee': 49,
+            'Steller\'s Jay': 50,
+            'Striped Skunk': 51,
+            'Swallow (cannot ID)': 52,
+            'Tamaulipas Crow': 53,
+            'Turkey Vulture': 54,
+            'Unknown': 55,
+            'Vehicle': 56,
+            'Virginia Opossum': 57,
+            'WATER': 58,
+            'Western Gray Squirrel': 59,
+            'White Crowned Sparrow': 60,
+            'Wild Pig': 61,
+            'Wild Turkey': 62,
+            'Willet': 63,
+            'Woodrat': 64
         }
+    
+    reverse_label_dict = {v: k for k, v in label_label_id_dict.items()}
+
+    for full_path in remaining_images:
+
+        # Optional: Skip non-image files
+        if not full_path.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+
+        img = mpimg.imread(full_path)
 
         plt.imshow(img)
         plt.axis("off")
         plt.title(full_path)
         plt.show(block=False)
 
-        label_id = input('Type the integer label ID for the species in the photo. \n' \
-                         'If you would like to quit with option to save enter \'break\': ').strip()
+        # Get user labels. If user enters 'break', break for loop.
 
-        if label_id != 'break':
-
-            while not label_id.isdigit():
-                label_id = input('Please enter a number 0-62 for label ID: ')
-
-            reverse_label_dict = {v: k for k, v in label_label_id_dict.items()}
-            label = reverse_label_dict.get(int(label_id))
-
-            new_row = {"File Path": full_path, "Label": label, "Label ID": label_id}
-            label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
-
-            print(label, label_id)
-
-            plt.close()
-        
-        else:
+        user_break, label_df = get_label(label_df, reverse_label_dict, full_path)
+        if not user_break:
             break
 
     save_selection = input('Would you like to save changes to the Oak Zoo Label DF? (Enter yes or no): ').lower()
@@ -148,7 +137,89 @@ def label_images(folder_path: str) -> None:
         save_selection = input('Would you like to save changes to the Oak Zoo Label DF? (Enter yes or no): ').lower()
     
     if save_selection == 'yes':
-        label_df.to_csv("C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv", index=False)
+        label_df.to_csv("C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv", index=False, na_rep="N/A")
+
+
+def get_label(label_df: pd.DataFrame, reverse_label_dict: dict, full_path: str) -> tuple[bool, pd.DataFrame]:
+
+    label_1_data = user_label_selection(reverse_label_dict)
+
+    if label_1_data[0]:
+
+        if input('If there is more than one label enter any key here:'):
+
+            label_2_data = user_label_selection(reverse_label_dict)
+        
+        else:
+            label_2_data = True, ['N/A', 'N/A', 'N/A']
+    
+    else:
+        label_2_data = True, ['N/A', 'N/A', 'N/A']
+
+    if label_1_data[0] and label_2_data[0]:
+
+        new_row = {"File_Path": full_path, 
+                   "Label_1": label_1_data[1][0], 
+                   "Label_ID_1": label_1_data[1][1], 
+                   "Quantity_1": label_1_data[1][2],
+                   "Label_2": label_2_data[1][0],
+                   "Label_ID_2": label_2_data[1][1],
+                   "Quantity_2": label_2_data[1][2]}
+        
+        label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
+
+        print(new_row)
+
+    else:
+        return False, label_df
+
+    plt.close()
+
+    return True, label_df
+
+
+def user_label_selection(reverse_label_dict: dict) -> tuple[bool, list]:
+
+    label_id = input('Type the integer label ID for the species in the photo. \n' \
+                         'If you would like to quit with option to save enter \'break\': ').strip()
+
+    if label_id != 'break':
+
+        label_id = ensure_digit('label_id', label_id)
+
+        quantity = get_quantity(label_id)    
+
+        label = reverse_label_dict.get(int(label_id))
+
+        add_label = True
+    
+    else:
+        return False, ['', '', '']
+    
+    return add_label, [label, label_id, quantity]
+
+
+def get_quantity(label_id: int) -> int:
+
+    quantity = input('Enter quantity if more than 1:')
+
+    if label_id in [26, 55, 58]:
+        quantity = 'N/A'
+    elif quantity:
+        quantity = ensure_digit('quantity', quantity)
+    else:
+        quantity = 1
+
+    return quantity
+
+
+def ensure_digit(col: str, val) -> int:
+    # Ensure label_id or quanitity input is a digit
+
+    while not val.isdigit():
+        val = input(f'Please enter a digit for {col}: ')
+    
+    return int(val)
 
 
 main()
