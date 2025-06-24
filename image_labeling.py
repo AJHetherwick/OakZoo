@@ -11,7 +11,7 @@ import os
 
 def main() -> None:
 
-    folder_path = "Z:/Conservation/UWIN/trail cam photos/Study photos/2025/January/Creek"
+    folder_path = "Z:/Conservation/UWIN/trail cam photos/Study photos/2024/July 2024/Creek"
     
     label_images(folder_path)
 
@@ -217,6 +217,9 @@ def ensure_digit(col: str, val) -> int:
     # Ensure label_id or quanitity input is a digit
 
     while not val.isdigit():
+        val = input(f'Please enter a digit for {col}: ')
+
+    while int(val) > 64:
         val = input(f'Please enter a digit for {col}: ')
     
     return int(val)
