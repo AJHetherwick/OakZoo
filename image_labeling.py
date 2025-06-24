@@ -18,7 +18,7 @@ def main() -> None:
 
 def label_images(folder_path: str) -> None:
 
-    label_df_path = "C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv"
+    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels.csv"
     label_df = pd.read_csv(label_df_path)
     labeled_paths = label_df['File_Path']
 
@@ -137,7 +137,7 @@ def label_images(folder_path: str) -> None:
         save_selection = input('Would you like to save changes to the Oak Zoo Label DF? (Enter yes or no): ').lower()
     
     if save_selection == 'yes':
-        label_df.to_csv("C:/Users/accrintern/Documents/GitHub/OakZoo/Oakland_Zoo_UW_Labels.csv", index=False, na_rep="N/A")
+        label_df.to_csv("C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels.csv", index=False, na_rep="N/A")
 
 
 def get_label(label_df: pd.DataFrame, reverse_label_dict: dict, full_path: str) -> tuple[bool, pd.DataFrame]:
