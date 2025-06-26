@@ -3,11 +3,11 @@
 
 def main():
     
-    test_str = 'Z:/owl_7.jpg'
-    test_str_2 = 'C:/striped_skunk_1.jpg'
+    compressed_freq = 48
+    len_species_subset = 26
+    species_subset = min(100-compressed_freq, len_species_subset)
 
-    print(test_str[:-4])
-    print(test_str_2[:-4])
+    print(species_subset)
 
 
 main()

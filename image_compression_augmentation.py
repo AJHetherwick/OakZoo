@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from PIL import Image, ImageOps
 from torchvision import transforms
+import torchvision.transforms.functional as F
 import os
 
 
@@ -23,23 +24,16 @@ def main() -> None:
 
     # Get the species with under 100 observations
     freq_counts = label_df["Label_1"].value_counts(dropna=True)
-    freq_counts = freq_counts[freq_counts < 100]
 
-    # Resize urban wildlife photos from 3264x2448 to 224x224
-    compress(
-        output_folder="C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed/",
-        freq_counts=freq_counts,
-        label_df=label_df,
-        label_df_compressed=label_df_compressed
-    )
+    # Resize photos to 224x224
+    # compress(
+    #     output_folder="C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed/",
+    #     freq_counts=freq_counts,
+    #     label_df=label_df,
+    #     label_df_compressed=label_df_compressed
+    # )
 
-    exit()
-
-    augment(
-        output_folder="C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed/",
-        freq_counts=freq_counts,
-        label_df=label_df
-    )
+    augment(label_df_compressed=label_df_compressed)
 
 
 def get_mean_std(label_df: pd.DataFrame) -> tuple[list, list]:
@@ -60,13 +54,16 @@ def compress(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame,
     # Save to C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed with label
     # stored in C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv
 
-    for label, count in freq_counts.items():
+    for label, _ in freq_counts.items():
 
         # Create subset for species
         species_subset = label_df[label_df['Label_1'] == label]
 
-        if count > 100:
-            species_subset = species_subset.sample(n=100, random_state=42)
+        # Shuffle rows of species subset
+        species_subset = species_subset.sample(n=min(100, len(species_subset))).reset_index(drop=True)
+
+        # Compress either 100 or the amount of photos we have
+        species_subset = species_subset.head(n=min(100, len(species_subset)))
 
         for _, row in species_subset.iterrows():
 
@@ -97,52 +94,57 @@ def compress(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame,
     label_df_compressed.to_csv('C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv', index=False)
 
 
-def augment(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame, 
-            target_size=(224, 224), fill_color=(0, 0, 0)) -> None:
+def augment(label_df_compressed: pd.DataFrame,) -> None:
 
-    # Index through each label in the frequency counter and if it has 
-    # less than 100 observations; augment, else just compress
+    # Augment photos for species with less than 100 observations.
 
-    for label in freq_counts:
+    compressed_freqs = label_df_compressed['Label'].value_counts(dropna=True)
+    compressed_freqs = compressed_freqs[compressed_freqs < 100]
+
+    for label, _ in compressed_freqs.items():
 
         # Create subset for just under-observed species
-        species_subset = label_df[label_df['Label_1'] == label]
+        species_subset = label_df_compressed[label_df_compressed['Label'] == label]
 
-        with Image.open(file_path) as img:
+        # Drop excess rows just until we reach 100 photos
+        species_subset = species_subset.head(n=min(100-len(species_subset), len(species_subset)))
 
-            img = ImageOps.pad(img, target_size, method=Image.BICUBIC, color=fill_color)
-        
-        # If there are less than 100 observations
-        if freq_counts[label] < 100:
+        for _, row in species_subset.iterrows():
 
-            counter = 0
+            file_path = row['File_Path']
 
-            # Augment images until we have 100 observations
-            while freq_counts[label] + counter < 100:
+            with Image.open(file_path) as img:
 
-                for row in species_subset:
+                img_transform = transforms.Compose([
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(15),
+                    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                    transforms.ToTensor()
+                ])
 
-                    file_path = row['File_Path']
+                aug_img = img_transform(img)
 
-                    with Image.open(file_path) as img:
+            # Save
+            base, ext = os.path.splitext(file_path)
 
-                        mean, std = 0, 0    # remove
+            for num in ['_aug_1', '_aug_2', '_aug_3', '_aug_4']:
 
-                        img_transform = transforms.Compose([
-                            transforms.RandomHorizontalFlip(),      # Then augment
-                            transforms.RandomRotation(15),
-                            transforms.ColorJitter(brightness=0.2, contrast=0.2),
-                            transforms.ToTensor(),                  # Convert to tensor
-                            transforms.Normalize(mean, std),        # Normalize last
-                        ])
+                if not os.path.exists(base + num + ext):
+                    file_path = base + num + ext
+                    break
+            aug_img = F.to_pil_image(aug_img)
+            aug_img.save(file_path, quality=95, optimize=True)
 
-                        img = img_transform(img)
+            new_row = {
+                'File_Path': file_path,
+                'Label': label,
+                'Label_ID': row['Label_ID']
+            }
 
-                    # Save
-                    filename = ''   #remove
-
-                    full_output_path = os.path.join(output_folder, filename)
-                    img.save(full_output_path, quality=95, optimize=True)
+            # Add new row to compressed dataframe
+            label_df_compressed = pd.concat([label_df_compressed, pd.DataFrame([new_row])], ignore_index=True)
+    
+    label_df_compressed.to_csv('C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv', index=False)
 
 
 
