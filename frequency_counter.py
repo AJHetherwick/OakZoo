@@ -7,19 +7,12 @@ import pandas as pd
 
 def main() -> None:
     
-    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Train_Labels.csv"
+    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Test_Labels.csv"
     label_df = pd.read_csv(label_df_path)
 
     freq_counts = label_df["Label"].value_counts(dropna=True)
 
     print(freq_counts)
-
-    labeled_df_compressed_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Test_Labels.csv"
-    labeled_df_compressed = pd.read_csv(labeled_df_compressed_path)
-
-    freq_counts_compressed = labeled_df_compressed['Label'].value_counts(dropna=True)
-
-    # print(freq_counts_compressed)
 
 
 main()

@@ -114,7 +114,7 @@ def label_images(folder_path: str) -> None:
 
     for full_path in remaining_images:
 
-        # Optional: Skip non-image files
+        # Skip non-image files
         if not full_path.lower().endswith((".jpg", ".jpeg", ".png")):
             continue
 
