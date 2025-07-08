@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import os
+import random
 
 
 def main() -> None:
@@ -99,41 +100,49 @@ def label_images(folder_paths: list[str]) -> None:
     labeled_paths = label_df['File_Path']
     labeled_paths = [os.path.normpath(p) for p in labeled_paths]
 
+    full_images_list = []
+
     for folder in folder_paths:
 
         for image in os.listdir(folder):
 
             full_path = folder + '/' + image
 
-            if os.path.normpath(full_path) in labeled_paths:
-                continue
+            full_images_list.append(full_path)
+
+    random.shuffle(full_images_list)    # Shuffle list so I am less likely to review the same photos over again.
+
+    for image_path in full_images_list:
+
+        if os.path.normpath(image_path) in labeled_paths:
+            continue
             
-            if not full_path.lower().endswith((".jpg", ".jpeg", ".png")):
-                continue
+        if not image_path.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
 
-            img = mpimg.imread(full_path)
+        img = mpimg.imread(image_path)
 
-            plt.imshow(img)
-            plt.axis("off")
-            plt.title(image)
-            plt.show(block=False)
+        plt.imshow(img)
+        plt.axis("off")
+        plt.title(image_path)
+        plt.show(block=False)
 
-            species_label_id = get_label()
+        species_label_id = get_label()
             
-            if species_label_id == 'break':
-                break
-            elif species_label_id == '':
-                continue
-            else:
-                species_label_id = int(species_label_id)
+        if species_label_id == 'break':
+            break
+        elif species_label_id == '':
+            continue
+        else:
+            species_label_id = int(species_label_id)
 
-                new_row = {"File_Path": full_path,
+            new_row = {"File_Path": image_path,
                            "Label": reverse_label_dict[species_label_id],
                            "Label_ID": species_label_id}
             
-                label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
+            label_df = pd.concat([label_df, pd.DataFrame([new_row])], ignore_index=True)
             
-            plt.close()
+        plt.close()
 
         if species_label_id == 'break':
             break
