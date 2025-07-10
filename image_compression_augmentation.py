@@ -14,26 +14,28 @@ import os
 
 def main() -> None:
 
-    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels.csv"
+    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Test_Labels.csv"
     label_df = pd.read_csv(label_df_path)
 
-    label_df_compressed_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv"
+    label_df_compressed_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Test_Labels_Compressed.csv"
     label_df_compressed = pd.read_csv(label_df_compressed_path)
 
-    # mean, std_dev = get_mean_std(label_df)
-
     # Get the species with under 100 observations
-    freq_counts = label_df["Label_1"].value_counts(dropna=True)
+    freq_counts = label_df["Label"].value_counts(dropna=True)
 
     # Resize photos to 224x224
-    # compress(
-    #     output_folder="C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed/",
-    #     freq_counts=freq_counts,
-    #     label_df=label_df,
-    #     label_df_compressed=label_df_compressed
-    # )
+    compress(
+        output_folder="C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Test_Photos_Compressed/",
+        freq_counts=freq_counts,
+        label_df=label_df,
+        label_df_compressed=label_df_compressed,
+        target_amount=50
+    )
 
-    augment(label_df_compressed=label_df_compressed)
+    # augment(
+        # label_df_compressed=label_df_compressed,
+        # target_amount=100
+        # )
 
 
 def get_mean_std(label_df: pd.DataFrame) -> tuple[list, list]:
@@ -48,22 +50,21 @@ def get_mean_std(label_df: pd.DataFrame) -> tuple[list, list]:
 
 
 def compress(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame, 
-             label_df_compressed: pd.DataFrame, target_size=(224, 224)) -> None:
+             label_df_compressed: pd.DataFrame, target_amount: int, target_size=(224, 224)) -> None:
     
-    # For each label in frequency counts, if over 100, randomly select 100 to compress, else compress all.
-    # Save to C:/Users/accrintern/Documents/AdamH_Project_Files/Oak_Zoo_Trail_Cam_Photos_Compressed with label
-    # stored in C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv
+    # For each label in frequency counts, if over target_amount, randomly select target_amount to compress, else compress all.
+    # Save to output_folder with label stored in label_df_compressed
 
     for label, _ in freq_counts.items():
 
         # Create subset for species
-        species_subset = label_df[label_df['Label_1'] == label]
+        species_subset = label_df[label_df['Label'] == label]
 
         # Shuffle rows of species subset
-        species_subset = species_subset.sample(n=min(100, len(species_subset))).reset_index(drop=True)
+        species_subset = species_subset.sample(n=min(target_amount, len(species_subset))).reset_index(drop=True)
 
-        # Compress either 100 or the amount of photos we have
-        species_subset = species_subset.head(n=min(100, len(species_subset)))
+        # Compress either target_amount or the amount of photos we have
+        species_subset = species_subset.head(n=min(target_amount, len(species_subset)))
 
         for _, row in species_subset.iterrows():
 
@@ -86,7 +87,7 @@ def compress(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame,
             new_row = {
                 'File_Path': full_output_path,
                 'Label': label,
-                'Label_ID': row['Label_ID_1']
+                'Label_ID': row['Label_ID']
             }
 
             label_df_compressed = pd.concat([label_df_compressed, pd.DataFrame([new_row])], ignore_index=True)
@@ -94,20 +95,20 @@ def compress(output_folder: str, freq_counts: pd.Series, label_df: pd.DataFrame,
     label_df_compressed.to_csv('C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_UW_Labels_Compressed.csv', index=False)
 
 
-def augment(label_df_compressed: pd.DataFrame,) -> None:
+def augment(label_df_compressed: pd.DataFrame, target_amount: int) -> None:
 
-    # Augment photos for species with less than 100 observations.
+    # Augment photos for species with less than target_amount observations.
 
     compressed_freqs = label_df_compressed['Label'].value_counts(dropna=True)
-    compressed_freqs = compressed_freqs[compressed_freqs < 100]
+    compressed_freqs = compressed_freqs[compressed_freqs < target_amount]
 
     for label, _ in compressed_freqs.items():
 
         # Create subset for just under-observed species
         species_subset = label_df_compressed[label_df_compressed['Label'] == label]
 
-        # Drop excess rows just until we reach 100 photos
-        species_subset = species_subset.head(n=min(100-len(species_subset), len(species_subset)))
+        # Drop excess rows just until we reach target_amount photos
+        species_subset = species_subset.head(n=min(target_amount-len(species_subset), len(species_subset)))
 
         for _, row in species_subset.iterrows():
 
