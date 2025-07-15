@@ -23,32 +23,82 @@ import os
 
 def main() -> None:
 
-    label_df_compressed_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Train_Labels.csv"
-    label_df_compressed = pd.read_csv(label_df_compressed_path)
+    label_df_path = "C:/Users/accrintern/Documents/AdamH_Project_Files/Oakland_Zoo_Train_Test_Final.csv"
+    label_df = pd.read_csv(label_df_path)
     
-    train_tensors, train_labels = reformat_data(label_df_compressed)
+    train_tensors, train_labels = reformat_data(label_df)
 
     fit_cnn(train_tensors, train_labels)
 
 
-def reformat_data(label_df_compressed) -> tuple[list, list]:
+def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
+
+    # Check the total amount of photos for each species. Put 80% of that into train, 20% into test.
+    # Make sure test set does not have augmented photos
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor()
     ])
 
-    tensors = []
-    labels = []
+    train_tensors, train_labels = [], []
+    test_tensors, test_labels = [], []
 
-    for _, row in label_df_compressed.iterrows():
-        img = Image.open(row['File_Path']).convert("RGB")
-        img_tensor = transform(img)
+    species_freq = label_df['Label'].value_counts()
 
-        tensors.append(img_tensor)
-        labels.append(row['Label_ID'])
+    for species, count in species_freq.items():
 
-    return tensors, labels
+        train_amount = round(count * 0.8)
+        test_amount = count - train_amount
+
+        species_subset = label_df[label_df['Label'] == species]
+
+        # Counter to see how many train and test photos were added.
+        train_added, test_added = 0, 0
+        index = 0
+
+        while train_added < train_amount and test_added < test_amount:
+
+            row = species_subset.iloc[index]
+
+            img = Image.open(row['File_Path']).convert("RGB")
+            img_tensor = transform(img)
+
+            if train_added < train_amount and row['Group'] == 'train':
+                # Add train photo if selected image part of train set
+
+                train_tensors.append(img_tensor)
+                train_labels.append(row['Label_ID'])
+
+                train_added += 1
+
+            elif test_added < test_amount and row['Group'] == 'test':
+                # Add test photo if selected image part of test set
+
+                test_tensors.append(img_tensor)
+                test_labels.append(row['Label_ID'])
+
+                test_added += 1
+                
+            elif train_added < train_amount and row['Group'] == 'test':
+                # Add test photo to train photos ONLY if there are no more train photos
+
+                train_tensors.append(img_tensor)
+                train_labels.append(row['Label_ID'])
+
+                train_added += 1
+            
+            elif test_added < test_amount and row['Group'] == 'train':
+                # Add train photo to test photos ONLY if there are no more test photos
+
+                test_tensors.append(img_tensor)
+                test_labels.append(row['Label_ID'])
+
+                test_added += 1
+
+            index += 1
+
+    return train_tensors, train_labels, test_tensors, test_labels
 
 
 def fit_cnn(train_tensors: list, train_labels: list) -> None:
