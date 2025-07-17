@@ -9,7 +9,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'    # Suppress information logs from ten
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import sklearn
+from sklearn.preprocessing import LabelEncoder
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -29,7 +29,12 @@ def main() -> None:
     
     train_tensors, train_labels, test_tensors, test_labels = reformat_data(label_df)
 
-    # fit_cnn(train_tensors, train_labels, test_tensors, test_labels)
+    print('train_tensors:', train_tensors.shape,
+          'train_labels:', train_labels.shape,
+          'test_tensors:', test_tensors.shape,
+          'test_labels:', test_labels.shape)
+
+    fit_cnn(train_tensors, train_labels, test_tensors, test_labels)
 
 
 def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
@@ -63,18 +68,13 @@ def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
             row = species_subset.iloc[index]
 
             img = Image.open(row['File_Path']).convert("RGB")
-            img_tensor = transform(img)
-
-            plt.imshow(img)
-            plt.show()
-            print(torch.min(img_tensor), torch.max(img_tensor))
-            exit()
+            img_tensor = transform(img).permute(1, 2, 0)    # (channels, height, width) -> (height, width, channels)
 
             if train_added < train_amount and row['Group'] == 'train':
                 # Add train photo if selected image part of train set
 
                 train_tensors.append(img_tensor)
-                train_labels.append(row['Label_ID'])
+                train_labels.append(row['Label'])
 
                 train_added += 1
 
@@ -82,7 +82,7 @@ def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
                 # Add test photo if selected image part of test set
 
                 test_tensors.append(img_tensor)
-                test_labels.append(row['Label_ID'])
+                test_labels.append(row['Label'])
 
                 test_added += 1
                 
@@ -90,7 +90,7 @@ def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
                 # Add test photo to train photos ONLY if there are no more train photos
 
                 train_tensors.append(img_tensor)
-                train_labels.append(row['Label_ID'])
+                train_labels.append(row['Label'])
 
                 train_added += 1
             
@@ -98,11 +98,22 @@ def reformat_data(label_df: pd.DataFrame) -> tuple[list, list, list, list]:
                 # Add train photo to test photos ONLY if there are no more test photos
 
                 test_tensors.append(img_tensor)
-                test_labels.append(row['Label_ID'])
+                test_labels.append(row['Label'])
 
                 test_added += 1
 
             index += 1
+
+    # Convert lists to arrays compatible for tensorflow
+    train_tensors = np.array(train_tensors)
+    train_labels = np.array(train_labels)
+    test_tensors = np.array(test_tensors)
+    test_labels = np.array(test_labels)
+
+    # Convert labels from [skunk, raccoon, domestic dog] to [0, 1, 2, ..., 32]
+    encoder = LabelEncoder()
+    train_labels = encoder.fit_transform(train_labels)
+    test_labels = encoder.fit_transform(test_labels)
 
     return train_tensors, train_labels, test_tensors, test_labels
 
@@ -139,12 +150,12 @@ def fit_cnn(train_tensors: list, train_labels: list, test_tensors: list, test_la
     cnn.add(Dropout(0.5))
     cnn.add(LeakyReLU(negative_slope=0.2))
     cnn.add(Dropout(0.5))
-    cnn.add(Dense(1, activation='softmax')) # Add activation function of output layer, softmax compatible with multiclass
+    cnn.add(Dense(33, activation='softmax')) # Add activation function of output layer, softmax compatible with multiclass
 
     # Compile
     cnn.compile(
         optimizer='adam',   # Adaptive Movement Estimator determines how to update weights
-        loss='categorical_crossentropy',    # Loss function, compatible for multiclass
+        loss='sparse_categorical_crossentropy',    # Loss function, compatible for multiclass
         metrics=['accuracy'])   # Print and track accuracy
 
     early_stopping = EarlyStopping(
